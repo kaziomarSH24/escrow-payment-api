@@ -35,6 +35,9 @@ class EscrowService
             $options[CURLOPT_POSTFIELDS] = $data;
         } elseif ($method === 'GET') {
             $options[CURLOPT_HTTPGET] = true;
+        } elseif ($method === 'PATCH') {
+            $options[CURLOPT_CUSTOMREQUEST] = 'PATCH';
+            $options[CURLOPT_POSTFIELDS] = $data;
         }
 
         curl_setopt_array($curl, $options);
@@ -43,12 +46,17 @@ class EscrowService
 
         return json_decode($response);
     }
-    
+
     //create customer
     public function createCustomer($data)
     {
-       return $this->sendRequest('POST', '/customer', $data);
+        return $this->sendRequest('POST', '/customer', $data);
+    }
 
+    //update customer
+    public function updateCustomer($customerId, $data)
+    {
+        return $this->sendRequest('PATCH', "/customer/{$customerId}", $data);
     }
 
     //create transaction
@@ -62,9 +70,20 @@ class EscrowService
     {
         if ($transactionId) {
             return $this->sendRequest('GET', "/transaction/{$transactionId}");
-        }else{
+        } else {
             return $this->sendRequest('GET', "/transaction");
         }
     }
-}
 
+    //Listing partner transactions
+    public function getPartnerTransactions()
+    {
+        return $this->sendRequest('GET', "/partner/transactions");
+    }
+
+    //Agree transaction
+    public function aggreTransaction($transactionId, $data)
+    {
+        return $this->sendRequest('PATCH', "/transaction/{$transactionId}", $data);
+    }
+}

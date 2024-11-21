@@ -16,9 +16,21 @@ class TransactionController extends Controller
     {
         $this->escrowService = $escrowService;
     }
+    public function getCustomers()
+    {
+        $response = Customer::all();
+        $response->transform(function ($customer) {
+            $customer->address = json_decode($customer->address);
+            return $customer;
+        });
 
-
-    public function createCustomer(Request $request){
+        if ($response->isEmpty()) {
+            return response()->json(['error' => 'No customers found'], 404);
+        }
+        return response()->json($response, 200);
+    }
+    public function createCustomer(Request $request)
+    {
         $data = Validator::make($request->all(), [
             'phone' => 'required|string',
             'first_name' => 'required|string',
@@ -50,7 +62,7 @@ class TransactionController extends Controller
             $data = json_decode($data, true);
             $name = $data['first_name'] . ' ' . ($data['middle_name'] ?? '') . ' ' . $data['last_name'];
             $name = trim(preg_replace('/\s+/', ' ', $name)); // Remove extra spaces if middle name is not present
-           $customer =  Customer::create([
+            $customer =  Customer::create([
                 'customer_id' => $response->id,
                 'email' => $data['email'],
                 'name' => $name,
@@ -61,12 +73,50 @@ class TransactionController extends Controller
         }
 
         return response()->json(['error' => 'Failed to create customer'], 400);
+    }
 
+    //Update customer
+    public function updateCustomer(Request $request, $customerID)
+    {
+
+        // $data = Validator::make($request->all(), [
+        //     'phone' => 'required|string',
+        //     'first_name' => 'required|string',
+        //     'middle_name' => 'string',
+        //     'last_name' => 'required|string',
+        //     'address' => 'required|array',
+        //     'address.city' => 'required|string',
+        //     'address.post_code' => 'required|string',
+        //     'address.country' => 'required|string',
+        //     'address.line1' => 'required|string',
+        //     'address.line2' => 'string',
+        //     'address.state' => 'required|string',
+        //     'email' => 'required|email|unique:customers,email',
+        // ]);
+
+        // if ($data->fails()) {
+        //     return response()->json(['error' => $data->errors()], 400);
+        // }
+
+        $data = json_encode($request->all());
+        // dd($data);
+
+        $response = $this->escrowService->updateCustomer($customerID, $data);
+        // dd($response);
+        if (isset($response->error)) {
+            return response()->json(['error' => $response->error], 400);
+        } elseif (isset($response->errors)) {
+            return response()->json(['error' => $response->errors], 400);
+        }
+
+        return response()->json(['message' => 'Customer updated successfully!', 'customer' => $response], 200);
     }
 
 
 
-
+    /**
+     * Create a new transaction
+    */
     public function createTransaction(Request $request)
     {
 
@@ -103,14 +153,16 @@ class TransactionController extends Controller
             //     'status' =>'pending',
             // ]);
 
-            return response()->json(['message' => 'Transaction created successfully!', "response"=>$response], 201);
+            return response()->json(['message' => 'Transaction created successfully!', "response" => $response], 201);
         }
 
         return response()->json(['error' => 'Failed to create transaction'], 400);
     }
 
 
-    //get all registered transactions
+    /**
+     * get all registered transactions
+    */
     public function getTransaction(Request $request,)
     {
         if ($request->has('transaction_id')) {
@@ -119,11 +171,42 @@ class TransactionController extends Controller
 
         $response = $this->escrowService->getTransaction($transactionId ?? null);
         // dd($response->id);
-        return $response; 
+        return $response;
         if (isset($response->id)) {
             return response()->json($response, 200);
         }
 
         return response()->json(['error' => 'Transaction not found'], 404);
+    }
+
+    /**
+     * Listing partner transactions
+     */
+
+    public function getPartnerTransactions(){
+        $response = $this->escrowService->getPartnerTransactions();
+        if (!isset($response)) {
+            return response()->json(['error' => 'No transactions found'], 404);
+        }
+        return response()->json($response, 200);
+    }
+
+    /**
+     * Aggregate transactions
+     */
+    public function aggreTransaction(Request $request, $transactionId)
+    {
+        $data = json_encode($request->all());
+        // dd($data);
+        $response = $this->escrowService->aggreTransaction($transactionId, $data);
+        // dd($response);
+        
+        if (isset($response->error)) {
+            return response()->json(['error' => $response->error], 400);
+        }elseif (isset($response->errors)) {
+            return response()->json(['error' => $response->errors], 400);
+        }
+
+        return response()->json(['message' => 'Transaction aggregated successfully!', 'transaction' => $response], 200);
     }
 }
